@@ -1,0 +1,15 @@
+{
+  "name": "Kem · góc làm việc của Kem Sama",
+  "short_name": "Kem",
+  "description": "Quản lý job, tài chính, học tập, tập luyện và ghi chú",
+  "lang": "vi",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#ffd3ee",
+  "theme_color": "#ff4fa8",
+  "icons": [
+    { "src": "assets/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "assets/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" }
+  ]
+}

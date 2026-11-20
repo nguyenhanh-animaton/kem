@@ -824,6 +824,7 @@ function viewSettings() {
     <section class="card span-6">
       <div class="card-h"><h2>${icon('🙋', 'pink')} Cá nhân</h2></div>
       <div class="flex"><span>Tên: <b>${esc(st.name)}</b> · Sinh nhật: <b>${st.birthday ? st.birthday.split('-').reverse().join('/') : 'chưa nhập'}</b></span><button class="btn ghost sm" data-act="editName">Sửa hồ sơ</button></div>
+      <div class="flex mt"><span>💻 Ứng dụng máy tính: <b>${isStandalone() ? 'Đang chạy như app ✓' : installEvt ? 'Có thể cài' : location.protocol === 'file:' ? 'Mở bằng link GitHub để cài' : 'Dùng menu trình duyệt → Cài đặt ứng dụng'}</b></span>${!isStandalone() && installEvt ? '<button class="btn primary sm" data-act="installApp">Cài Kem lên máy</button>' : ''}</div>
       <div class="flex mt"><span>🌗 Giao diện: <b>${{ auto: 'Tự đổi theo giờ (đêm 18h → 6h)', day: 'Luôn sáng', night: 'Luôn tối' }[st.theme || 'auto']}</b></span><button class="btn ghost sm" data-act="cycleTheme">Đổi</button></div>
       <div class="flex mt"><span>✦ Lấp lánh theo chuột: <b>${st.sparkle === false ? 'Tắt' : 'Bật'}</b></span><button class="btn ghost sm" data-act="toggleSparkle">${st.sparkle === false ? 'Bật lên' : 'Tắt đi'}</button></div>
       <div class="flex mt"><span>Thông báo nhắc nhở: <b>${('Notification' in window) ? ({ granted: 'Đã bật', denied: 'Đã chặn (bật lại trong cài đặt trình duyệt)', default: 'Chưa bật' }[Notification.permission]) : 'Không hỗ trợ'}</b></span>
@@ -1497,6 +1498,22 @@ ACTIONS.toSplash = () => {
 };
 const splashShown = () => !$('#splash').classList.contains('gone');
 document.addEventListener('keydown', e => { if (e.key === 'Enter' && splashShown() && $('#modal').classList.contains('hidden')) ACTIONS.start(); });
+
+/* ---------- Cài thành app (PWA) ---------- */
+let installEvt = null;
+const isStandalone = () => matchMedia('(display-mode: standalone)').matches || navigator.standalone === true;
+window.addEventListener('beforeinstallprompt', e => { e.preventDefault(); installEvt = e; if (route() === 'settings') render(); });
+window.addEventListener('appinstalled', () => { installEvt = null; toast('💻 Đã cài Kem! Tìm icon Kem ở Start menu / Desktop nhé'); boom(innerWidth / 2, innerHeight / 2, 40); if (route() === 'settings') render(); });
+ACTIONS.installApp = async () => {
+  if (!installEvt) { toast('Mở menu ⋮ của trình duyệt → "Cài đặt ứng dụng" / "Install Kem"'); return; }
+  installEvt.prompt();
+  await installEvt.userChoice;
+  installEvt = null;
+  if (route() === 'settings') render();
+};
+if ('serviceWorker' in navigator && location.protocol.startsWith('http')) {
+  window.addEventListener('load', () => navigator.serviceWorker.register('sw.js').catch(() => {}));
+}
 
 /* ---------- Khởi động ---------- */
 save();
