@@ -1,0 +1,8 @@
+# Không bao giờ đẩy file sao lưu dữ liệu cá nhân lên GitHub
+*.json
+kem-backup-*
+pixel-desk-backup-*
+# File hệ thống
+Thumbs.db
+desktop.ini
+.DS_Store

@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Kem</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@600;700;800&family=Nunito:wght@400;600;700;800;900&family=VT323&display=swap" rel="stylesheet">
+<link rel="icon" type="image/png" href="assets/logo.png">
+<link rel="stylesheet" href="style.css">
+<link rel="stylesheet" href="y2k.css">
+<link rel="stylesheet" href="night.css">
+</head>
+<body class="splash-on">
+  <div id="splash" class="splash">
+    <div class="sp-art">
+      <div class="win-bar"><span>✦ kem.png</span><i></i><i></i><i></i></div>
+      <img id="spImg" src="assets/logo.png" alt="">
+    </div>
+    <div class="sp-text">
+      <h1><span class="chrome" id="spHello">Xin chào Kem Sama,</span></h1>
+      <p class="sp-sub">hãy bắt đầu thôi!</p>
+      <div class="sp-info" id="spInfo"></div>
+      <div><button class="btn primary sp-go" data-act="start">▶ BẮT ĐẦU</button></div>
+      <small class="sp-hint">hoặc nhấn Enter ↵</small>
+    </div>
+  </div>
+  <div class="floaties" aria-hidden="true"><span>✦</span><span>♥</span><span>★</span><span>✧</span><span>♥</span><span>✦</span><span>★</span><span>♡</span></div>
+  <aside class="sidebar">
+    <div class="side-win">
+      <div class="win-bar"><span>✦ kem.exe</span><i></i><i></i><i></i></div>
+      <div class="brand">
+        <img class="brand-logo" src="assets/logo.png" alt="Kem">
+        <div><b class="chrome">Kem</b><small><span class="online"></span>love what you do</small></div>
+      </div>
+    </div>
+    <nav id="nav"></nav>
+    <button class="nav-i back-start" data-act="toSplash" title="Quay lại màn hình chào"><span class="ni">⏏</span><span>Màn bắt đầu</span></button>
+    <div class="side-deco" aria-hidden="true">⋆｡°✩ ☁ ✩°｡⋆</div>
+    <div class="side-foot" id="sideFoot"></div>
+    <div class="marquee" aria-hidden="true"><span>★ LOVE WHAT YOU DO ★ KEM.EXE ★ BỚT UỐNG STING ★ GG WP ★ CHO MÈO ĂN CHƯA? ★ ♡ ★ LOVE WHAT YOU DO ★ KEM.EXE ★ BỚT UỐNG STING ★ GG WP ★ CHO MÈO ĂN CHƯA? ★ ♡&nbsp;</span></div>
+  </aside>
+
+  <main class="main">
+    <header class="hero">
+      <img class="hero-avatar" src="assets/logo.png" alt="">
+      <div class="hero-text">
+        <h1 id="greet">Xin chào!</h1>
+        <p id="greetSub"></p>
+      </div>
+      <div class="mood" id="mood" data-act="moodPoke" title="Bấm để nghe Kem nói tiếp">
+        <div class="bubble" id="moodSay"></div>
+        <span class="px-heart h1"></span><span class="px-heart h2"></span>
+      </div>
+      <div class="lcd">
+        <div class="lcd-date" id="lcdDate">--</div>
+        <div class="lcd-time" id="lcdTime">--:--</div>
+        <button class="theme-btn" id="themeBtn" data-act="cycleTheme" title="Đổi chế độ sáng / tối">☀️ tự động</button>
+      </div>
+    </header>
+    <div id="view"></div>
+  </main>
+
+  <div id="modal" class="modal hidden"></div>
+  <div id="toasts"></div>
+  <input type="file" id="importFile" accept=".json,application/json" hidden>
+  <script src="app.js"></script>
+</body>
+</html>
