@@ -1,9 +1,16 @@
 {
-  "updatedAt": "2026-11-20T18:34:31.431Z",
+  "updatedAt": "2026-11-20T18:36:16.053Z",
   "date": "2026-11-21",
   "unit": "VND/chỉ",
   "note": "Giá vàng 24K, lấy tự động từ trang chính thức của từng hãng. buy = giá tiệm mua vào, sell = giá tiệm bán ra.",
   "brands": {
+    "Bảo Tín Minh Châu": {
+      "product": "Nhẫn tròn trơn 999.9 (Rồng Thăng Long)",
+      "buy": 12830000,
+      "sell": 13330000,
+      "sourceTime": "",
+      "ok": true
+    },
     "Bảo Tín Mạnh Hải": {
       "product": "Kim Gia Bảo 24K",
       "buy": 12830000,
