@@ -17,7 +17,7 @@ async function get(url, opts = {}, tries = 3) {
       if (!r.ok) throw new Error('HTTP ' + r.status);
       return await r.text();
     } catch (e) {
-      err = e;
+      err = new Error(e.message + (e.cause ? ` (${e.cause.code || e.cause.message})` : ''));
       await new Promise(s => setTimeout(s, 3000 * (i + 1)));
     }
   }
@@ -46,18 +46,38 @@ function htmlText(h) {
     .normalize('NFC');
 }
 
+// API JSON chính thức của BTMC (có thể chặn máy chủ nước ngoài → còn nguồn dự phòng)
+async function btmcApi() {
+  const j = JSON.parse(await get('https://api.btmc.vn/api/BTMCAPI/getpricebtmc?key=3kd8ub1llcg9t45hnoh8hmn7t5kc2v', {}, 2));
+  const rows = (j?.DataList?.Data || []).map(r => {
+    const n = r['@row'];
+    const m = String(r['@d_' + n] || '').match(/(\d+)\/(\d+)\/(\d+)\s+(\d+):(\d+)/);
+    return { name: String(r['@n_' + n] || '').normalize('NFC'), buy: toNum(r['@pb_' + n]), sell: toNum(r['@ps_' + n]), at: m ? stamp(m[1], m[2], m[3], m[4], m[5]) : '' };
+  });
+  const ring = rows.filter(r => /^NHẪN TRÒN TRƠN/i.test(r.name)).sort((a, b) => b.at.localeCompare(a.at))[0];
+  if (!ring) throw new Error('không thấy dòng NHẪN TRÒN TRƠN');
+  return { product: 'Nhẫn tròn trơn 999.9 (Rồng Thăng Long)', buy: ring.buy, sell: ring.sell, sourceTime: ring.at };
+}
+
 const SOURCES = {
-  // API JSON chính thức của BTMC
+  // BTMC: thử API JSON → trang chủ btmc.vn → webgia.com
   'Bảo Tín Minh Châu': async () => {
-    const j = JSON.parse(await get('https://api.btmc.vn/api/BTMCAPI/getpricebtmc?key=3kd8ub1llcg9t45hnoh8hmn7t5kc2v'));
-    const rows = (j?.DataList?.Data || []).map(r => {
-      const n = r['@row'];
-      const m = String(r['@d_' + n] || '').match(/(\d+)\/(\d+)\/(\d+)\s+(\d+):(\d+)/);
-      return { name: String(r['@n_' + n] || '').normalize('NFC'), buy: toNum(r['@pb_' + n]), sell: toNum(r['@ps_' + n]), at: m ? stamp(m[1], m[2], m[3], m[4], m[5]) : '' };
-    });
-    const ring = rows.filter(r => /^NHẪN TRÒN TRƠN/i.test(r.name)).sort((a, b) => b.at.localeCompare(a.at))[0];
-    if (!ring) throw new Error('không thấy dòng NHẪN TRÒN TRƠN');
-    return { product: 'Nhẫn tròn trơn 999.9 (Rồng Thăng Long)', buy: ring.buy, sell: ring.sell, sourceTime: ring.at };
+    const errs = [];
+    try { return await btmcApi(); } catch (e) { errs.push('api: ' + e.message); }
+    try {
+      const txt = htmlText(await get('https://btmc.vn/'));
+      const m = txt.match(/NHẪN TRÒN TRƠN BẢO TÍN MINH CHÂU 999\.9 \(24k\)\s+([\d.,]+)\s+([\d.,]+)/i);
+      if (!m) throw new Error('không thấy dòng nhẫn tròn trơn');
+      const k = s => { const n = toNum(s); return n < 100000 ? n * 1000 : n; }; // trang ghi nghìn đồng
+      return { product: 'Nhẫn tròn trơn 999.9 (Rồng Thăng Long)', buy: k(m[1]), sell: k(m[2]), sourceTime: '' };
+    } catch (e) { errs.push('btmc.vn: ' + e.message); }
+    try {
+      const txt = htmlText(await get('https://webgia.com/gia-vang/bao-tin-minh-chau/'));
+      const m = txt.match(/tròn trơn 999\.9 \(24k\)\s+([\d.]+)\s+([\d.]+)/i);
+      if (!m) throw new Error('không thấy dòng nhẫn tròn trơn');
+      return { product: 'Nhẫn tròn trơn 999.9 (Rồng Thăng Long)', buy: toNum(m[1]), sell: toNum(m[2]), sourceTime: '' };
+    } catch (e) { errs.push('webgia: ' + e.message); }
+    throw new Error(errs.join(' | '));
   },
 
   // GraphQL mà chính trang baotinmanhhai.vn dùng
