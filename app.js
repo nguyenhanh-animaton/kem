@@ -109,8 +109,8 @@ function seed() {
       { id: uid(), name: 'Quỹ dự phòng', icon: '🛟', target: 30000000, saved: 12000000 },
     ],
     gold: [
-      { id: uid(), date: pm(2, 10), kind: 'Nhẫn tròn trơn 9999', brand: 'PNJ', qty: 2, buyPrice: 14200000, place: '', note: '', sold: false, sellPrice: 0, sellDate: '' },
-      { id: uid(), date: inM(3), kind: 'Vàng miếng', brand: 'SJC', qty: 1, buyPrice: 15000000, place: '', note: 'Mua tích lũy', sold: false, sellPrice: 0, sellDate: '' },
+      { id: uid(), date: pm(2, 10), kind: 'Vàng 24K (999.9)', brand: 'Bảo Tín Minh Châu', qty: 2, buyPrice: 14200000, place: '', note: '', sold: false, sellPrice: 0, sellDate: '' },
+      { id: uid(), date: inM(3), kind: 'Vàng 24K (999.9)', brand: 'Phú Quý', qty: 1, buyPrice: 15000000, place: '', note: 'Mua tích lũy', sold: false, sellPrice: 0, sellDate: '' },
     ],
     wplan: [
       { id: 'p1', dow: 1, activity: 'Gym', time: '18:00', minutes: 60, note: 'Chân + mông' },
@@ -120,7 +120,7 @@ function seed() {
       { id: 'p5', dow: new Date().getDay(), activity: 'Giãn cơ', time: '21:30', minutes: 15, note: 'Sau giờ vẽ' },
     ],
     wlogs: [1, 2, 4, 6, 8, 9, 11, 13, 15, 16, 20].map((n, i) => ({ id: uid(), date: addDays(-n), activity: ['Gym', 'Chạy bộ', 'Yoga', 'Đạp xe'][i % 4], minutes: [60, 30, 45, 50][i % 4], kcal: [350, 280, 150, 400][i % 4], note: '', planId: '' })),
-    goldPrices: { 'Nhẫn tròn trơn 9999|PNJ': { price: 14800000, date: todayStr() }, 'Vàng miếng|SJC': { price: 15300000, date: todayStr() } },
+    goldPrices: { 'Vàng 24K (999.9)|Bảo Tín Minh Châu': { price: 14800000, date: todayStr() }, 'Vàng 24K (999.9)|Phú Quý': { price: 15300000, date: todayStr() } },
     notes: [
       { id: uid(), text: 'Gửi bản anim v2 cho Studio A', remindAt: addDays(1) + 'T09:00', done: false, pinned: false, notified: false },
       { id: uid(), text: 'Họp brief job mới', remindAt: addDays(1) + 'T14:00', done: false, pinned: false, notified: false },
@@ -134,8 +134,41 @@ let db = load();
 const ui = { month: curMonth(), calMonth: curMonth(), selDay: todayStr(), jobTab: 'active', homeJobTab: 'active', noteTab: 'all', statsRange: 'month' };
 
 /* ---------- Vàng ---------- */
-const GOLD_KINDS = ['Vàng miếng', 'Nhẫn tròn trơn 9999', 'Vàng 24K (trang sức)', 'Vàng 18K', 'Vàng 14K', 'Vàng 10K', 'Khác'];
-const GOLD_BRANDS = ['SJC', 'PNJ', 'DOJI', 'Bảo Tín Minh Châu', 'Phú Quý', 'Mi Hồng', 'Ngọc Thẩm', 'Tiệm địa phương'];
+const GOLD_KINDS = ['Vàng 24K (999.9)', 'Vàng miếng', 'Vàng 18K', 'Vàng 14K', 'Khác'];
+const GOLD_BRANDS = ['Bảo Tín Minh Châu', 'Bảo Tín Mạnh Hải', 'Kim Ngân Phúc', 'Huy Thanh', 'Phú Quý'];
+/* Chỉ vàng 24K mới được tự cập nhật giá hằng ngày */
+const is24k = kind => /24k|9999|999\.9/i.test(kind || '');
+const normBrand = s => String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/đ/gi, 'd').toLowerCase().replace(/[^a-z0-9]/g, '');
+let goldFeed = null; // dữ liệu giá đọc từ data/gold.json (GitHub Actions cập nhật mỗi sáng)
+function feedFor(brand) {
+  if (!goldFeed || !goldFeed.brands) return null;
+  const n = normBrand(brand);
+  const k = Object.keys(goldFeed.brands).find(b => normBrand(b) === n);
+  return k ? goldFeed.brands[k] : null;
+}
+function applyGoldFeed() {
+  if (!goldFeed) return 0;
+  let n = 0;
+  db.gold.filter(g => !g.sold && is24k(g.kind)).forEach(g => {
+    const f = feedFor(g.brand);
+    if (f && num(f.buy) > 0) {
+      const cur = db.goldPrices[goldKey(g)];
+      if (!cur || cur.price !== num(f.buy) || cur.date !== goldFeed.date) { db.goldPrices[goldKey(g)] = { price: num(f.buy), date: goldFeed.date, auto: true }; n++; }
+    }
+  });
+  if (n) save();
+  return n;
+}
+async function loadGoldFeed() {
+  if (!location.protocol.startsWith('http')) return;
+  try {
+    const r = await fetch('data/gold.json', { cache: 'no-store' });
+    if (!r.ok) return;
+    goldFeed = await r.json();
+    applyGoldFeed();
+    if (route() === 'savings' || route() === 'home') render();
+  } catch (e) { /* không có mạng: giữ giá cũ */ }
+}
 const goldKey = g => `${g.kind}|${g.brand || ''}`;
 const goldNow = g => { const p = db.goldPrices[goldKey(g)]; return p && num(p.price) ? num(p.price) : null; };
 const fmtQty = q => `${+num(q).toFixed(2)} chỉ`;
@@ -685,6 +718,17 @@ function viewSavings() {
   </div>`;
 }
 
+function goldBoard() {
+  if (!goldFeed || !goldFeed.brands) return '';
+  const at = goldFeed.updatedAt ? new Date(goldFeed.updatedAt) : null;
+  const when = at && !isNaN(at) ? `${pad(at.getHours())}:${pad(at.getMinutes())} · ${pad(at.getDate())}/${pad(at.getMonth() + 1)}/${at.getFullYear()}` : fmtDate(goldFeed.date);
+  return `<div class="gold-board"><div class="gb-h">📊 Giá vàng 24K hôm nay <small>cập nhật ${when}</small></div>
+    <table class="tbl"><thead><tr><th>Hãng</th><th>Sản phẩm</th><th class="r">Mua vào / chỉ</th><th class="r">Bán ra / chỉ</th></tr></thead><tbody>
+    ${GOLD_BRANDS.map(b => { const f = feedFor(b); const st = f && f.sourceTime ? `${f.sourceTime.slice(11, 16)} ${f.sourceTime.slice(8, 10)}/${f.sourceTime.slice(5, 7)}` : '';
+      return `<tr><td><b>${esc(b)}</b>${f && f.ok === false ? ' <span class="pill red" title="Lần lấy giá gần nhất bị lỗi, đang hiện giá cũ">giá cũ</span>' : ''}</td><td><small>${f ? esc(f.product || '24K') + (st ? ` · tiệm cập nhật ${st}` : '') : 'chưa lấy được giá'}</small></td>
+      <td class="r"><span class="money">${f && f.buy ? money(f.buy) : '—'}</span></td><td class="r"><span class="money">${f && f.sell ? money(f.sell) : '—'}</span></td></tr>`; }).join('')}
+    </tbody></table></div>`;
+}
 function goldCard() {
   const s = goldStats();
   const combos = [...new Set(s.hold.map(goldKey))];
@@ -718,7 +762,8 @@ function goldCard() {
     ${list.length ? `<table class="tbl"><thead><tr><th>Loại · Hãng</th><th>Ngày mua</th><th class="r">Số lượng</th><th class="r">Giá mua / chỉ</th><th class="r">Giá hiện tại / chỉ</th><th class="r">Lãi / lỗ</th><th></th><th></th></tr></thead><tbody>${rows}</tbody></table>`
       : empty('🪙', 'Chưa có vàng nào. Bấm "Thêm vàng đã mua" để ghi lại.')}
     ${s.realized ? `<small style="display:block;margin-top:8px">Lãi/lỗ đã chốt từ vàng đã bán: ${pl(s.realized)}</small>` : ''}
-    <small style="display:block;margin-top:6px">💡 Giá vàng đổi mỗi ngày: bấm "Cập nhật giá hôm nay" và nhập <b>giá tiệm mua vào</b> (giá bạn bán được) để tính lãi/lỗ đúng. 1 lượng = 10 chỉ.</small>
+    ${goldBoard()}
+    <small style="display:block;margin-top:6px">💡 Vàng <b>24K</b> của 5 hãng (BTMC, BTMH, Kim Ngân Phúc, Huy Thanh, Phú Quý) được <b>tự cập nhật giá mỗi sáng</b>, tính theo giá tiệm mua vào (giá bạn bán được). Loại khác thì bấm "Cập nhật giá hôm nay" để nhập tay. 1 lượng = 10 chỉ.</small>
   </section>`;
 }
 
@@ -1109,7 +1154,7 @@ function goldForm(g) {
   const brands = [...new Set([...GOLD_BRANDS, ...db.gold.map(x => x.brand).filter(Boolean)])];
   openForm({
     title: g ? '✏️ Sửa vàng' : '🪙 Thêm vàng đã mua',
-    values: g || { date: todayStr(), qty: 1, kind: 'Nhẫn tròn trơn 9999', brand: 'SJC' },
+    values: g || { date: todayStr(), qty: 1, kind: 'Vàng 24K (999.9)', brand: 'Bảo Tín Minh Châu' },
     fields: [
       { k: 'kind', label: 'Loại vàng', type: 'select', half: true, options: GOLD_KINDS },
       { k: 'brand', label: 'Hãng / thương hiệu', half: true, list: brands, ph: 'VD: SJC, PNJ, DOJI' },
@@ -1541,7 +1586,9 @@ save();
 applyTheme();
 renderSplash();
 render();
+loadGoldFeed();
 setInterval(() => applyTheme(true), 60000);
+setInterval(loadGoldFeed, 3 * 60 * 60 * 1000); // app mở lâu thì 3 tiếng đọc lại giá một lần
 tickClock();
 setInterval(tickClock, 1000);
 checkReminders();

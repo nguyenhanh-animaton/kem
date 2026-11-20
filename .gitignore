@@ -1,5 +1,8 @@
 # Không bao giờ đẩy file sao lưu dữ liệu cá nhân lên GitHub
 *.json
+# ...trừ file giá vàng công khai do GitHub Actions tạo
+!data/gold.json
+node_modules/
 kem-backup-*
 pixel-desk-backup-*
 # File hệ thống
