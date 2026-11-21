@@ -711,7 +711,10 @@ function viewSavings() {
         <div class="row"><span>${money(g.saved)} / ${money(g.target)}</span><b style="color:var(--green-d)">${p}%</b></div>
         ${bar(p, 'green')}
         <div class="row"><span>${p >= 100 ? '🎉 Đã đạt mục tiêu!' : `Còn thiếu ${money(num(g.target) - num(g.saved))}`}</span></div>
-        <div class="btns"><button class="btn green sm" data-act="deposit" data-id="${g.id}" data-sign="1">＋ Bỏ heo</button><button class="btn ghost sm" data-act="deposit" data-id="${g.id}" data-sign="-1">－ Rút</button>
+        ${(g.history || []).length ? `<div class="g-hist">${[...g.history].sort((a, b) => b.date.localeCompare(a.date)).slice(0, 4).map(h => `<div class="gh ${h.amount < 0 ? 'out' : 'in'}">
+          <span>${fmtDate(h.date).slice(0, 5)}</span><span class="gh-note">${esc(h.note || (h.amount < 0 ? 'Rút ra' : 'Bỏ heo'))}</span><b>${h.amount < 0 ? '−' : '+'}${money(Math.abs(h.amount))}</b>
+          <button class="ibtn" title="Xóa dòng này (hoàn lại số tiền)" data-act="delGoalHist" data-id="${g.id}" data-h="${h.id}">✕</button></div>`).join('')}</div>` : ''}
+        <div class="btns"><button class="btn green sm" data-act="deposit" data-id="${g.id}" data-sign="1">＋ Bỏ heo</button><button class="btn ghost sm" data-act="deposit" data-id="${g.id}" data-sign="-1">－ Rút / Tiêu</button>
           <button class="ibtn" data-act="editGoal" data-id="${g.id}">✏️</button><button class="ibtn" data-act="delGoal" data-id="${g.id}">🗑️</button></div></div>`;
     }).join('')}</div>` : `<div class="card">${empty('🎯', 'Tạo mục tiêu như "Mua laptop", "Quỹ dự phòng"... để theo dõi tiến độ.')}</div>`}</div>
     ${goldCard()}
@@ -966,6 +969,44 @@ function tickClock() {
 }
 
 /* ---------- Form & modal ---------- */
+/* ---------- Ô ngày kiểu Việt Nam: dd/mm/yyyy ---------- */
+// "05/10/2026" | "5/10/2026" | "05102026" | "5-10-2026" | "5/10" (năm nay) → "2026-10-05"
+function parseVnDate(s) {
+  s = String(s || '').trim().replace(/[-.\s]+/g, '/');
+  if (!s) return null;
+  if (/^\d{8}$/.test(s)) s = `${s.slice(0, 2)}/${s.slice(2, 4)}/${s.slice(4)}`;
+  let m = s.match(/^(\d{1,2})\/(\d{1,2})(?:\/(\d{2}|\d{4}))?$/);
+  if (!m) return null;
+  const d = +m[1], mo = +m[2];
+  let y = m[3] ? +m[3] : new Date().getFullYear();
+  if (y < 100) y += 2000;
+  const dt = new Date(y, mo - 1, d);
+  if (dt.getFullYear() !== y || dt.getMonth() !== mo - 1 || dt.getDate() !== d) return null;
+  return `${y}-${pad(mo)}-${pad(d)}`;
+}
+window.kemDateMask = el => {
+  let v = el.value.replace(/[^\d/]/g, '');
+  if (!v.includes('/')) { // chỉ gõ số: tự chèn dấu "/"
+    const d = v.slice(0, 8);
+    v = d.slice(0, 2) + (d.length > 2 ? '/' + d.slice(2, 4) : '') + (d.length > 4 ? '/' + d.slice(4) : '');
+  }
+  el.value = v.slice(0, 10);
+  el.classList.toggle('bad', el.value.length >= 8 && !parseVnDate(el.value));
+};
+window.kemDatePick = btn => {
+  const box = btn.parentElement, nat = box.querySelector('.dnative'), txt = box.querySelector('input[type=text]');
+  nat.value = parseVnDate(txt.value) || todayStr();
+  try { nat.showPicker(); } catch (e) { nat.focus(); nat.click(); }
+};
+window.kemDateFromNative = nat => {
+  const txt = nat.parentElement.querySelector('input[type=text]');
+  if (nat.value) { txt.value = fmtDate(nat.value); txt.classList.remove('bad'); }
+};
+window.kemDateToday = btn => {
+  const txt = btn.parentElement.querySelector('input[type=text]');
+  txt.value = fmtDate(todayStr()); txt.classList.remove('bad');
+};
+
 function openForm({ title, fields, values = {}, submit = 'Lưu', onSave }) {
   const html = fields.map(fd => {
     const v = values[fd.k] ?? fd.def ?? '';
@@ -975,6 +1016,13 @@ function openForm({ title, fields, values = {}, submit = 'Lưu', onSave }) {
     } else if (fd.type === 'days') {
       const sel = new Set((Array.isArray(v) ? v : [v]).filter(x => x !== '' && x != null).map(Number));
       inp = `<div class="daypick">${DOW_ORDER.map(i => `<label><input type="checkbox" name="${fd.k}" value="${i}" ${sel.has(i) ? 'checked' : ''}><span>${DOW_FULL[i]}</span></label>`).join('')}</div>`;
+    } else if (fd.type === 'date') {
+      inp = `<div class="datefield">
+        <input type="text" name="${fd.k}" value="${v ? fmtDate(v) : ''}" placeholder="ngày/tháng/năm" inputmode="numeric" maxlength="10" autocomplete="off" ${fd.req ? 'required' : ''} oninput="kemDateMask(this)">
+        <button type="button" class="dbtn" title="Chọn trên lịch" onclick="kemDatePick(this)">📅</button>
+        <button type="button" class="dbtn" title="Điền ngày hôm nay" onclick="kemDateToday(this)">Hôm nay</button>
+        <input type="date" class="dnative" tabindex="-1" aria-hidden="true" onchange="kemDateFromNative(this)">
+      </div>`;
     } else if (fd.type === 'textarea') {
       inp = `<textarea name="${fd.k}" rows="3" placeholder="${esc(fd.ph || '')}">${esc(v)}</textarea>`;
     } else if (fd.type === 'checkbox') {
@@ -998,11 +1046,19 @@ function openForm({ title, fields, values = {}, submit = 'Lưu', onSave }) {
   form.onsubmit = async e => {
     e.preventDefault();
     const out = {};
+    let badDate = null;
     fields.forEach(fd => {
       if (fd.type === 'days') { out[fd.k] = [...form.querySelectorAll(`input[name="${fd.k}"]:checked`)].map(x => +x.value); return; }
       const el = form.elements[fd.k];
+      if (fd.type === 'date') {
+        const raw = el.value.trim(), iso = parseVnDate(raw);
+        if (raw && !iso) { badDate = badDate || el; el.classList.add('bad'); }
+        out[fd.k] = iso || '';
+        return;
+      }
       out[fd.k] = fd.type === 'checkbox' ? el.checked : ['number', 'money', 'range'].includes(fd.type) ? num(el.value) : el.value.trim();
     });
+    if (badDate) { toast('Ngày chưa đúng, nhập dạng ngày/tháng/năm, ví dụ 05/10/2026', 'err'); badDate.focus(); return; }
     if ((await onSave(out)) === false) return;
     save(); closeModal(); render();
   };
@@ -1408,16 +1464,30 @@ const ACTIONS = {
   deposit: d => {
     const g = byId(db.goals, d.id), sign = +d.sign;
     openForm({
-      title: sign > 0 ? `🐷 Bỏ heo · ${esc(g.name)}` : `💸 Rút ra · ${esc(g.name)}`, submit: sign > 0 ? 'Bỏ heo' : 'Rút',
-      fields: [{ k: 'amount', label: 'Số tiền (₫)', type: 'money', req: true }],
+      title: sign > 0 ? `🐷 Bỏ heo · ${esc(g.name)}` : `💸 Rút tiền tiết kiệm · ${esc(g.name)}`, submit: sign > 0 ? 'Bỏ heo' : 'Rút',
+      values: { date: todayStr() },
+      fields: [
+        { k: 'amount', label: sign > 0 ? 'Số tiền bỏ vào (₫)' : `Số tiền rút ra (₫) · đang có ${money(g.saved)}`, type: 'money', req: true, half: true },
+        { k: 'date', label: 'Ngày', type: 'date', half: true, req: true },
+        { k: 'note', label: sign > 0 ? 'Ghi chú (không bắt buộc)' : 'Tiêu vào việc gì?', ph: sign > 0 ? 'VD: tiền job tháng 11' : 'VD: sửa xe, mua bảng vẽ...' },
+      ],
       onSave(v) {
         if (v.amount <= 0) { toast('Số tiền phải lớn hơn 0', 'err'); return false; }
+        if (sign < 0 && v.amount > num(g.saved)) { toast(`Trong heo chỉ có ${money(g.saved)} thôi`, 'err'); return false; }
         g.saved = Math.max(0, num(g.saved) + sign * v.amount);
+        (g.history = g.history || []).push({ id: uid(), date: v.date, amount: sign * v.amount, note: v.note });
         if (sign > 0) boom(innerWidth / 2, innerHeight / 2, g.saved >= g.target ? 50 : 20, ['🐷', '✦', '', '♥']);
-        toast(sign > 0 ? (g.saved >= g.target ? '🎉 Đạt mục tiêu rồi!' : '🐷 Ụt ịt, đã bỏ heo!') : 'Đã rút tiền');
+        toast(sign > 0 ? (g.saved >= g.target ? '🎉 Đạt mục tiêu rồi!' : '🐷 Ụt ịt, đã bỏ heo!') : `💸 Đã rút ${money(v.amount)}, trong heo còn ${money(g.saved)}`);
       },
     });
   },
+
+  delGoalHist: d => confirmDel('dòng lịch sử này (số tiền trong heo sẽ được hoàn lại như trước)', () => {
+    const g = byId(db.goals, d.id), h = (g.history || []).find(x => x.id === d.h);
+    if (!h) return;
+    g.saved = Math.max(0, num(g.saved) - num(h.amount));
+    g.history = g.history.filter(x => x.id !== d.h);
+  }),
 
   addPlan: d => planForm(null, d.dow),
   editPlan: d => planForm(byId(db.wplan, d.id)),
