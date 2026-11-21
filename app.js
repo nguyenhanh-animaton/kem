@@ -787,8 +787,8 @@ function goldCard() {
       <td><div class="job-name"><span class="ava yellow">🪙</span><div><b>${esc(g.kind)}</b><small>${esc(g.brand || '—')}${g.place ? ' · ' + esc(g.place) : ''}${g.note ? ' · ' + esc(g.note) : ''}</small></div></div></td>
       <td style="white-space:nowrap">${fmtDate(g.date)}</td>
       <td class="r"><b>${fmtQty(q)}</b>${q >= 10 ? `<small>${+(q / 10).toFixed(2)} lượng</small>` : ''}</td>
-      <td class="r"><span class="money">${money(buy)}</span><small>Vốn ${money(q * buy)}</small></td>
-      <td class="r">${g.sold ? `<span class="money">${money(g.sellPrice)}</span><small>Bán ${fmtDate(g.sellDate)}</small>` : now !== null ? `<span class="money">${money(now)}</span><small>tiệm mua vào · trị giá ${money(q * now)}</small>` : '<small>Chưa có giá tiệm mua vào<br>bấm "Cập nhật giá hôm nay"</small>'}</td>
+      <td class="r"><span class="money">${money(buy)}</span><small>Vốn ${money(q * buy)}</small>${buy < 1000000 ? `<small class="pct-down" title="Bấm ✏️ để sửa giá mua">⚠ giá mua có vẻ sai</small>` : ''}</td>
+      <td class="r">${g.sold ? `<span class="money">${money(g.sellPrice)}</span><small>Bán ${g.sellDate ? fmtDate(g.sellDate) : '(chưa có ngày)'}</small>` : now !== null ? `<span class="money">${money(now)}</span><small>tiệm mua vào · trị giá ${money(q * now)}</small>` : '<small>Chưa có giá tiệm mua vào<br>bấm "Cập nhật giá hôm nay"</small>'}</td>
       <td class="r">${pl(profit)}${pc !== null ? `<small class="${pc >= 0 ? 'pct-up' : 'pct-down'}">${pctTxt(pc)}</small>` : ''}</td>
       <td>${g.sold ? '<span class="pill gray">Đã bán</span>' : '<span class="pill yellow">Đang giữ</span>'}</td>
       <td class="acts">${!g.sold ? `<button class="ibtn" title="Bán" data-act="sellGold" data-id="${g.id}">💱</button>` : ''}<button class="ibtn" title="Sửa" data-act="editGold" data-id="${g.id}">✏️</button><button class="ibtn" title="Xóa" data-act="delGold" data-id="${g.id}">🗑️</button></td>
@@ -1061,7 +1061,7 @@ function openForm({ title, fields, values = {}, submit = 'Lưu', onSave }) {
     } else if (fd.type === 'range') {
       inp = `<div class="range"><input type="range" name="${fd.k}" min="0" max="100" step="5" value="${num(v)}" oninput="this.nextElementSibling.textContent=this.value+'%'"><span>${num(v)}%</span></div>`;
     } else if (fd.type === 'money') {
-      inp = `<input type="number" name="${fd.k}" min="0" step="1000" value="${esc(v)}" ${fd.req ? 'required' : ''} placeholder="0" oninput="this.nextElementSibling.textContent=(+this.value||0).toLocaleString('vi-VN')+'₫'"><span class="hint">${money(v)}</span>`;
+      inp = `<input type="number" name="${fd.k}" min="0" step="any" value="${esc(v)}" ${fd.req ? 'required' : ''} placeholder="0" oninput="this.nextElementSibling.textContent=(+this.value||0).toLocaleString('vi-VN')+'₫'"><span class="hint">${money(v)}</span>`;
     } else {
       inp = `<input type="${fd.type || 'text'}" name="${fd.k}" value="${esc(v)}" ${fd.req ? 'required' : ''} ${fd.step ? `step="${fd.step}" min="0"` : ''} ${fd.list ? `list="dl_${fd.k}"` : ''} placeholder="${esc(fd.ph || '')}">` +
         (fd.list ? `<datalist id="dl_${fd.k}">${fd.list.map(o => `<option value="${esc(o)}">`).join('')}</datalist>` : '');
@@ -1303,9 +1303,21 @@ function goldForm(g) {
       { k: 'buyPrice', label: 'Giá lúc mua / 1 chỉ (₫) *', type: 'money', req: true },
       { k: 'place', label: 'Nơi mua', half: true, ph: 'VD: PNJ Quận 1' },
       { k: 'note', label: 'Ghi chú', half: true, ph: 'VD: quà sinh nhật' },
+      // Khi sửa: cho chỉnh luôn thông tin bán (kể cả vàng đã bán từ trước)
+      ...(g ? [
+        { k: 'sold', label: '', type: 'checkbox', text: '💱 Đã bán lô này', half: false },
+        { k: 'sellPrice', label: 'Giá bán / 1 chỉ (₫) · giá tiệm mua lại của bạn', type: 'money', half: true },
+        { k: 'sellDate', label: 'Ngày bán', type: 'date', half: true },
+      ] : []),
     ],
-    onSave(v) {
+    async onSave(v) {
       if (v.qty <= 0 || v.buyPrice <= 0) { toast('Số lượng và giá mua phải lớn hơn 0', 'err'); return false; }
+      if (g) {
+        if (v.sold && !(v.sellPrice > 0)) { toast('Đã bán thì nhập giá bán mỗi chỉ nhé', 'err'); return false; }
+        if (v.sold && !v.sellDate) v.sellDate = todayStr();
+        if (!v.sold) { v.sellPrice = 0; v.sellDate = ''; }
+      }
+      if (v.buyPrice < 1000000 && !(await askConfirm(`Giá mua ${money(v.buyPrice)} / 1 chỉ có vẻ quá thấp (giá vàng thường trên 1 triệu/chỉ). Vẫn lưu?`, { ok: 'Vẫn lưu', icon: '🤔', danger: false }))) return false;
       if (g) Object.assign(g, v); else db.gold.push({ id: uid(), ...v, sold: false, sellPrice: 0, sellDate: '' });
       // KHÔNG lấy giá mua của bạn làm giá hiện tại (đó là giá tiệm bán ra); chỉ dùng giá tiệm mua vào
       applyGoldFeed();
