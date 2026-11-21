@@ -358,7 +358,7 @@ function jobTable(list, opts = {}) {
     return `<tr>
       <td><div class="job-name"><span class="ava ${c}">${esc((j.type || j.name || '?').trim()[0] || '?').toUpperCase()}</span><div><b>${esc(j.name)}</b><small>${esc(j.client || '—')}</small></div></div></td>
       <td>${j.type ? `<span class="tag">${esc(j.type)}</span>` : '<small>—</small>'}</td>
-      <td style="white-space:nowrap">${fmtDate(j.deadline)}${deadlineInfo(j)}</td>
+      <td style="white-space:nowrap">${fmtDate(j.deadline)}${deadlineInfo(j)}${j.startDate ? `<small>nhận ${fmtDate(j.startDate)}</small>` : ''}</td>
       <td><span class="pill ${st.c}">${STAGES[stageIdx(jobStage(j))].i} ${STAGES[stageIdx(jobStage(j))].s}</span>${num(j.revisions) ? ` <span class="pill ${num(j.revisions) >= 3 ? 'red' : 'purple'}">🔁${num(j.revisions)}</span>` : ''}${j.status !== 'done' ? `<div class="bar thin"><i style="width:${STAGES[stageIdx(jobStage(j))].p}%"></i></div>` : ''}</td>
       <td class="r"><span class="money">${money(j.amount)}</span><small>${j.paid ? '✅ Đã trả đủ' : depositGot(j) ? `🟢 Đã cọc ${short(depositGot(j))}` : '⏳ Chưa nhận'}</small></td>
       <td class="acts">
@@ -500,6 +500,15 @@ function homeWorkout() {
   </section>`;
 }
 
+/* "📥 nhận 15/11 · đã làm 6 ngày / tổng 9 ngày" */
+function jobDates(j) {
+  if (!j.startDate) return '';
+  const passed = -daysLeft(j.startDate);
+  const total = j.deadline ? Math.round((new Date(j.deadline + 'T00:00:00') - new Date(j.startDate + 'T00:00:00')) / 864e5) : null;
+  const bits = [`📥 nhận ${fmtDate(j.startDate).slice(0, 5)}`];
+  if (passed >= 0) bits.push(passed === 0 ? 'mới nhận hôm nay' : `đã làm ${passed} ngày${total > 0 ? ` / ${total}` : ''}`);
+  return `<small class="jc-dates">${bits.join(' · ')}</small>`;
+}
 function jobCard(j) {
   const st = jobStage(j), si = stageIdx(st), S = STAGES[si], d = j.deadline ? daysLeft(j.deadline) : null;
   const dl = d === null ? '<span class="cd none">chưa có deadline</span>'
@@ -508,7 +517,7 @@ function jobCard(j) {
     : `<span class="cd ${d <= 3 ? 'soon' : ''}">còn <b>${d}</b> ngày</span>`;
   const rev = num(j.revisions), last = si >= STAGES.length - 2;
   return `<div class="jcard ${d !== null && d < 0 ? 'is-late' : d !== null && d <= 2 ? 'is-soon' : ''}">
-    <div class="jc-top"><span class="ava ${colorOf(j.type)}">${S.i}</span><div class="jc-name"><b>${esc(j.name)}</b><small>${esc(j.client || 'Khách lẻ')}${j.type ? ' · ' + esc(j.type) : ''}</small></div>${dl}</div>
+    <div class="jc-top"><span class="ava ${colorOf(j.type)}">${S.i}</span><div class="jc-name"><b>${esc(j.name)}</b><small>${esc(j.client || 'Khách lẻ')}${j.type ? ' · ' + esc(j.type) : ''}</small>${jobDates(j)}</div>${dl}</div>
     <div class="pipe">${STAGES.map((s, i) => `<span class="pp ${i < si ? 'ok' : i === si ? 'now' : ''}" title="${s.t}"><i></i><small>${s.s}</small></span>`).join('')}</div>
     <div class="jc-bar">${bar(S.p, d !== null && d < 0 ? 'pink' : '')}<b>${S.p}%</b></div>
     <div class="jc-foot">
@@ -1058,11 +1067,12 @@ function jobForm(j, date) {
   const clients = [...new Set(db.jobs.map(x => x.client).filter(Boolean))];
   openForm({
     title: j ? '✏️ Sửa job' : '🎬 Job mới về!',
-    values: j ? { ...j, stage: jobStage(j) } : { deadline: date || '', stage: 'brief' },
+    values: j ? { ...j, stage: jobStage(j) } : { startDate: todayStr(), deadline: date || '', stage: 'brief' },
     fields: [
       { k: 'name', label: 'Tên job *', req: true, ph: 'VD: Emote Twitch 5 cái cho chị A' },
       { k: 'client', label: 'Khách (tên / nick FB / Discord)', half: true, list: clients },
       { k: 'type', label: 'Loại job', half: true, list: types },
+      { k: 'startDate', label: 'Ngày nhận job', type: 'date', half: true },
       { k: 'deadline', label: 'Deadline', type: 'date', half: true },
       { k: 'stage', label: 'Đang ở công đoạn', type: 'select', half: true, options: STAGES.map(s => [s.k, `${s.i} ${s.t}`]) },
       { k: 'amount', label: 'Tổng tiền job (₫)', type: 'money', half: true },

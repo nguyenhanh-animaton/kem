@@ -220,3 +220,7 @@ body,.sidebar,.hero,.tbl td{transition:background-color .6s,color .6s,border-col
 .theme-seg button{border:0;background:transparent;border-radius:999px;width:30px;height:24px;cursor:pointer;font-size:14px;opacity:.55;transition:.15s}
 .theme-seg button:hover{opacity:1;background:#3a3466}
 .theme-seg button.on{opacity:1;background:#ff4fa8;box-shadow:0 0 8px rgba(255,79,168,.6)}
+
+/* ngày nhận job trên thẻ tiến độ */
+.jc-name .jc-dates{display:block;margin-top:2px;font-family:var(--pixel);font-size:15px;color:#6a5a98}
+:root[data-theme=night] .jc-name .jc-dates{color:#cbb8ff}
