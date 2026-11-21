@@ -364,6 +364,7 @@ function jobTable(list, opts = {}) {
       <td class="acts">
         ${j.status !== 'done' ? `<button class="ibtn" title="Đánh dấu hoàn thành" data-act="doneJob" data-id="${j.id}">✅</button>` : ''}
         ${!j.paid ? `<button class="ibtn" title="Đã nhận tiền" data-act="payJob" data-id="${j.id}">💰</button>` : ''}
+        <button class="ibtn" title="Tạo job tiếp theo (copy, tăng số trong tên)" data-act="dupJob" data-id="${j.id}">➕</button>
         <button class="ibtn" title="Sửa" data-act="editJob" data-id="${j.id}">✏️</button>
         <button class="ibtn" title="Xóa" data-act="delJob" data-id="${j.id}">🗑️</button>
       </td></tr>`;
@@ -525,6 +526,7 @@ function jobCard(j) {
       ${depositGot(j) ? `<span class="pill green">đã cọc ${short(depositGot(j))}</span>` : num(j.deposit) ? `<span class="pill yellow">chờ cọc ${short(j.deposit)}</span>` : ''}
       ${rev ? `<span class="pill ${rev >= 3 ? 'red' : 'purple'}" title="Số lần khách bắt sửa">🔁 sửa ${rev} lần${rev >= 3 ? ' 😤' : ''}</span>` : ''}
       <span class="sp"></span>
+      <button class="ibtn" title="Tạo job tiếp theo (copy, tăng số trong tên)" data-act="dupJob" data-id="${j.id}">➕</button>
       <button class="ibtn" title="Khách bắt sửa (+1 lần)" data-act="addRev" data-id="${j.id}">🔁</button>
       <button class="ibtn" title="Sửa thông tin job" data-act="editJob" data-id="${j.id}">✏️</button>
       <button class="btn ${last ? 'gold' : 'green'} sm" title="Chuyển sang công đoạn tiếp theo" data-act="nextStage" data-id="${j.id}">${last ? '🏆 Chốt xong' : `▶ ${STAGES[si + 1].s}`}</button>
@@ -1062,6 +1064,47 @@ function toast(text, kind = '', ms = 2600) {
 }
 
 /* ---------- Các form cụ thể ---------- */
+/* ---------- Nhân bản job: DOT-LV41 → DOT-LV42, LV43... ---------- */
+// Tách tên thành phần chữ + số cuối + đuôi: "DOT-LV41" → ["DOT-LV", "41", ""]
+const splitNum = name => { const m = String(name || '').match(/^(.*?)(\d+)(\D*)$/); return m ? { pre: m[1], num: m[2], suf: m[3] } : null; };
+function nextJobNames(j, count) {
+  const p = splitNum(j.name);
+  if (!p) return Array.from({ length: count }, (_, i) => `${j.name} (${i + 2})`);
+  const same = new RegExp('^' + p.pre.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '(\\d+)' + p.suf.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '$', 'i');
+  let max = +p.num;
+  db.jobs.forEach(x => { const m = String(x.name || '').match(same); if (m) max = Math.max(max, +m[1]); });
+  return Array.from({ length: count }, (_, i) => p.pre + String(max + 1 + i).padStart(p.num.length, '0') + p.suf);
+}
+function dupJobForm(j) {
+  const first = nextJobNames(j, 1)[0];
+  openForm({
+    title: `➕ Tạo tiếp từ "${esc(j.name)}"`, submit: 'Tạo job',
+    values: { count: 1, stage: jobStage(j), amount: j.amount, startDate: todayStr(), deadline: j.deadline && j.deadline >= todayStr() ? j.deadline : '' },
+    fields: [
+      { k: 'count', label: `Số job muốn tạo (job đầu tiên sẽ là "${first}")`, type: 'number', step: '1', req: true },
+      { k: 'stage', label: 'Công đoạn', type: 'select', half: true, options: STAGES.map(s => [s.k, `${s.i} ${s.t}`]) },
+      { k: 'amount', label: 'Tiền mỗi job (₫)', type: 'money', half: true },
+      { k: 'startDate', label: 'Ngày nhận job', type: 'date', half: true },
+      { k: 'deadline', label: 'Deadline', type: 'date', half: true },
+    ],
+    onSave(v) {
+      const n = Math.round(num(v.count));
+      if (n < 1 || n > 50) { toast('Nhập từ 1 đến 50 job nhé', 'err'); return false; }
+      const st = STAGES[stageIdx(v.stage)], done = st.k === 'final';
+      const names = nextJobNames(j, n);
+      const at = db.jobs.indexOf(j) + 1;
+      const fresh = names.map(name => ({
+        id: uid(), name, client: j.client || '', type: j.type || '', note: '',
+        startDate: v.startDate, deadline: v.deadline, amount: v.amount,
+        stage: st.k, status: statusOfStage(st.k), progress: st.p, doneDate: done ? todayStr() : '',
+        deposit: 0, depositDate: '', paid: false, paidDate: '', revisions: 0,
+      }));
+      db.jobs.splice(at, 0, ...fresh);
+      toast(n === 1 ? `➕ Đã tạo ${names[0]}` : `➕ Đã tạo ${n} job: ${names[0]} → ${names[n - 1]}`);
+    },
+  });
+}
+
 function jobForm(j, date) {
   const types = [...new Set(['Animation nhân vật', 'Motion graphic', 'Animation sticker / emote', 'Intro / Outro', 'Animated MV / Lyric', 'Frame by frame', 'Rigging (Spine / Live2D)', 'Storyboard', ...db.jobs.map(x => x.type).filter(Boolean)])];
   const clients = [...new Set(db.jobs.map(x => x.client).filter(Boolean))];
@@ -1327,6 +1370,7 @@ const ACTIONS = {
 
   addJob: d => jobForm(null, d.date),
   editJob: d => jobForm(byId(db.jobs, d.id)),
+  dupJob: d => dupJobForm(byId(db.jobs, d.id)),
   delJob: d => confirmDel('job này', () => { db.jobs = db.jobs.filter(j => j.id !== d.id); }),
   doneJob: d => finishJob(byId(db.jobs, d.id)),
   payJob: d => { const j = byId(db.jobs, d.id); j.paid = true; j.paidDate = todayStr(); boom(undefined, undefined, 22, ['💰', '🪙', '✦', '₫']); commit(`💰 Ting ting! Nhận ${money(jobRemain(j))}`); },
