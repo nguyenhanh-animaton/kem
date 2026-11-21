@@ -758,6 +758,20 @@ function goldBoard() {
       <td class="r"><span class="money">${f && f.buy ? money(f.buy) : '—'}</span></td><td class="r"><span class="money">${f && f.sell ? money(f.sell) : '—'}</span></td></tr>`; }).join('')}
     </tbody></table></div>`;
 }
+/* Dòng TỔNG cuối bảng vàng: vàng đang giữ (+ dòng đã bán nếu có) */
+function goldTotalRow(s, pl, pctTxt) {
+  if (!s.hold.length && !s.realized) return '';
+  const pc = s.pct;
+  const holdRow = s.hold.length ? `<tr class="gold-total">
+    <td><b>TỔNG đang giữ</b>${s.unpriced ? `<small>${s.unpriced} mục chưa có giá, chưa tính lãi/lỗ</small>` : ''}</td><td></td>
+    <td class="r"><b>${fmtQty(s.qty)}</b>${s.qty >= 10 ? `<small>${+(s.qty / 10).toFixed(2)} lượng</small>` : ''}</td>
+    <td class="r"><span class="money">${money(s.cost)}</span><small>tổng vốn</small></td>
+    <td class="r"><span class="money">${money(s.value)}</span><small>tổng trị giá</small></td>
+    <td class="r">${pl(s.profit)}${pc !== null ? `<small class="${pc >= 0 ? 'pct-up' : 'pct-down'}">${pctTxt(pc)}</small>` : ''}</td><td></td><td></td></tr>` : '';
+  const soldRow = s.realized ? `<tr class="gold-total sold"><td><b>Đã bán (lãi/lỗ đã chốt)</b></td><td></td><td></td><td></td><td></td>
+    <td class="r">${pl(s.realized)}${s.realizedPct !== null ? `<small class="${s.realized >= 0 ? 'pct-up' : 'pct-down'}">${pctTxt(s.realizedPct)}</small>` : ''}</td><td></td><td></td></tr>` : '';
+  return `<tfoot>${holdRow}${soldRow}</tfoot>`;
+}
 function goldCard() {
   const s = goldStats();
   const combos = [...new Set(s.hold.map(goldKey))];
@@ -790,7 +804,7 @@ function goldCard() {
       <div class="span-3"><div class="stat blue"><span class="si">💎</span><div><small>Giá trị hiện tại</small><b>${money(s.value)}</b></div></div></div>
       <div class="span-3"><div class="stat ${s.profit >= 0 ? 'green' : 'pink'}"><span class="si">${s.profit >= 0 ? '📈' : '📉'}</span><div><small>Lãi / lỗ tạm tính${s.pct !== null ? ` · <b class="pct-big">${pctTxt(s.pct)}</b>` : ''}</small><b>${s.profit >= 0 ? '+' : '−'}${money(Math.abs(s.profit))}</b>${s.unpriced ? `<small>${s.unpriced} mục chưa có giá, chưa tính</small>` : ''}</div></div></div>
     </div>
-    ${list.length ? `<table class="tbl"><thead><tr><th>Loại · Hãng</th><th>Ngày mua</th><th class="r">Số lượng</th><th class="r">Giá mua / chỉ</th><th class="r">Giá hiện tại / chỉ</th><th class="r">Lãi / lỗ</th><th></th><th></th></tr></thead><tbody>${rows}</tbody></table>`
+    ${list.length ? `<table class="tbl"><thead><tr><th>Loại · Hãng</th><th>Ngày mua</th><th class="r">Số lượng</th><th class="r">Giá mua / chỉ</th><th class="r">Giá hiện tại / chỉ</th><th class="r">Lãi / lỗ</th><th></th><th></th></tr></thead><tbody>${rows}</tbody>${goldTotalRow(s, pl, pctTxt)}</table>`
       : empty('🪙', 'Chưa có vàng nào. Bấm "Thêm vàng đã mua" để ghi lại.')}
     ${s.realized ? `<small style="display:block;margin-top:8px">Lãi/lỗ đã chốt từ vàng đã bán: ${pl(s.realized)} ${pctTxt(s.realizedPct)}</small>` : ''}
     ${goldBoard()}

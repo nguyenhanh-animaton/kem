@@ -248,3 +248,13 @@ body,.sidebar,.hero,.tbl td{transition:background-color .6s,color .6s,border-col
 .pct-up{color:var(--green-d)!important;font-weight:900}
 .pct-down{color:#d81f78!important;font-weight:900}
 .pct-big{font-family:var(--pixel);font-size:16px;font-weight:400}
+
+/* dòng TỔNG cuối bảng vàng */
+.tbl tfoot .gold-total td{background:linear-gradient(90deg,#fff3b5,#fffbe6);border-top:2.5px solid var(--ink);border-bottom:2.5px solid var(--ink);font-size:14.5px}
+.tbl tfoot .gold-total td:first-child{border-left:2.5px solid var(--ink)}
+.tbl tfoot .gold-total td:last-child{border-right:2.5px solid var(--ink)}
+.tbl tfoot .gold-total b{font-family:var(--display);font-size:15.5px}
+.tbl tfoot .gold-total .money{font-size:15.5px}
+.tbl tfoot .gold-total.sold td{background:#f3ecff}
+:root[data-theme=night] .tbl tfoot .gold-total td{background:linear-gradient(90deg,#4a3a0b,#2f2a14)}
+:root[data-theme=night] .tbl tfoot .gold-total.sold td{background:#2f1f6b}
