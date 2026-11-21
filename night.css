@@ -243,3 +243,8 @@ body,.sidebar,.hero,.tbl td{transition:background-color .6s,color .6s,border-col
 .gh.in b{color:var(--green-d)}.gh.out b{color:#d81f78}
 .gh .ibtn{width:24px;height:24px;font-size:11px;opacity:.5}.gh .ibtn:hover{opacity:1}
 :root[data-theme=night] .g-hist{border-top-color:#3a2f6e}
+
+/* % lãi lỗ vàng */
+.pct-up{color:var(--green-d)!important;font-weight:900}
+.pct-down{color:#d81f78!important;font-weight:900}
+.pct-big{font-family:var(--pixel);font-size:16px;font-weight:400}

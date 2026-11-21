@@ -59,6 +59,10 @@ function migrate(d) {
   if (!o.settings.name || o.settings.name === 'bạn') o.settings.name = 'Kem Sama';
   ['jobs', 'tx', 'courses', 'goals', 'notes', 'gold', 'wplan', 'wlogs'].forEach(k => { if (!Array.isArray(o[k])) o[k] = []; });
   if (!o.goldPrices || typeof o.goldPrices !== 'object') o.goldPrices = {};
+  // Bỏ "giá hiện tại" cũ bị lấy nhầm bằng giá bạn mua (giá tiệm bán ra) lúc mới thêm vàng
+  Object.entries(o.goldPrices).forEach(([key, p]) => {
+    if (p && !p.auto && o.gold.some(g => `${g.kind}|${g.brand || ''}` === key && num(g.buyPrice) === num(p.price) && g.date === p.date)) delete o.goldPrices[key];
+  });
   o.courses.forEach(c => { if (!Array.isArray(c.logs)) c.logs = []; });
   return o;
 }
@@ -142,8 +146,12 @@ const normBrand = s => String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').
 let goldFeed = null; // dữ liệu giá đọc từ data/gold.json (GitHub Actions cập nhật mỗi sáng)
 function feedFor(brand) {
   if (!goldFeed || !goldFeed.brands) return null;
-  const n = normBrand(brand);
-  const k = Object.keys(goldFeed.brands).find(b => normBrand(b) === n);
+  // chấp nhận cách gõ tắt: BTMC, BTMH, KNP, PQ, "Bảo Tín Minh Châu Cầu Giấy"...
+  const ALIAS = { btmc: 'baotinminhchau', btmh: 'baotinmanhhai', knp: 'kimnganphuc', pq: 'phuquy', phuquygroup: 'phuquy', huythanhjewelry: 'huythanh', vangbachuythanh: 'huythanh' };
+  let n = normBrand(brand); n = ALIAS[n] || n;
+  if (!n) return null;
+  const k = Object.keys(goldFeed.brands).find(b => normBrand(b) === n)
+    || Object.keys(goldFeed.brands).find(b => n.includes(normBrand(b)));
   return k ? goldFeed.brands[k] : null;
 }
 function applyGoldFeed() {
@@ -176,9 +184,16 @@ function goldStats() {
   const hold = db.gold.filter(g => !g.sold);
   const qty = sum(hold, g => g.qty);
   const cost = sum(hold, g => num(g.qty) * num(g.buyPrice));
-  const value = sum(hold, g => num(g.qty) * (goldNow(g) ?? num(g.buyPrice)));
-  const realized = sum(db.gold.filter(g => g.sold), g => num(g.qty) * (num(g.sellPrice) - num(g.buyPrice)));
-  return { hold, qty, cost, value, profit: value - cost, realized };
+  // Lãi/lỗ chỉ tính cho vàng ĐÃ CÓ giá tiệm mua vào hôm nay (giá bạn bán lại được)
+  const priced = hold.filter(g => goldNow(g) !== null), unpriced = hold.filter(g => goldNow(g) === null);
+  const pricedCost = sum(priced, g => num(g.qty) * num(g.buyPrice));
+  const pricedValue = sum(priced, g => num(g.qty) * goldNow(g));
+  const value = pricedValue + sum(unpriced, g => num(g.qty) * num(g.buyPrice)); // chưa có giá thì tạm tính bằng giá vốn
+  const profit = pricedValue - pricedCost;
+  const soldList = db.gold.filter(g => g.sold);
+  const realized = sum(soldList, g => num(g.qty) * (num(g.sellPrice) - num(g.buyPrice)));
+  const soldCost = sum(soldList, g => num(g.qty) * num(g.buyPrice));
+  return { hold, qty, cost, value, profit, pct: pricedCost ? profit / pricedCost * 100 : null, unpriced: unpriced.length, realized, realizedPct: soldCost ? realized / soldCost * 100 : null };
 }
 
 /* ---------- Tập luyện ---------- */
@@ -749,16 +764,18 @@ function goldCard() {
   const lastUpd = combos.map(k => db.goldPrices[k]?.date || '').sort().pop();
   const list = [...db.gold].sort((a, b) => (a.sold - b.sold) || (b.date || '').localeCompare(a.date || ''));
   const pl = v => v === null ? '<small>—</small>' : `<span class="money ${v >= 0 ? 'plus' : 'minus'}">${v >= 0 ? '+' : '−'}${money(Math.abs(v))}</span>`;
+  const pctTxt = p => p === null || !isFinite(p) ? '' : `${p >= 0 ? '+' : '−'}${Math.abs(p).toFixed(2).replace('.', ',')}%`;
   const rows = list.map(g => {
     const now = goldNow(g), q = num(g.qty), buy = num(g.buyPrice);
     const profit = g.sold ? q * (num(g.sellPrice) - buy) : now !== null ? q * (now - buy) : null;
+    const pc = profit !== null && buy > 0 ? profit / (q * buy) * 100 : null;
     return `<tr>
       <td><div class="job-name"><span class="ava yellow">🪙</span><div><b>${esc(g.kind)}</b><small>${esc(g.brand || '—')}${g.place ? ' · ' + esc(g.place) : ''}${g.note ? ' · ' + esc(g.note) : ''}</small></div></div></td>
       <td style="white-space:nowrap">${fmtDate(g.date)}</td>
       <td class="r"><b>${fmtQty(q)}</b>${q >= 10 ? `<small>${+(q / 10).toFixed(2)} lượng</small>` : ''}</td>
       <td class="r"><span class="money">${money(buy)}</span><small>Vốn ${money(q * buy)}</small></td>
-      <td class="r">${g.sold ? `<span class="money">${money(g.sellPrice)}</span><small>Bán ${fmtDate(g.sellDate)}</small>` : now !== null ? `<span class="money">${money(now)}</span><small>Trị giá ${money(q * now)}</small>` : '<small>Chưa có giá</small>'}</td>
-      <td class="r">${pl(profit)}</td>
+      <td class="r">${g.sold ? `<span class="money">${money(g.sellPrice)}</span><small>Bán ${fmtDate(g.sellDate)}</small>` : now !== null ? `<span class="money">${money(now)}</span><small>tiệm mua vào · trị giá ${money(q * now)}</small>` : '<small>Chưa có giá tiệm mua vào<br>bấm "Cập nhật giá hôm nay"</small>'}</td>
+      <td class="r">${pl(profit)}${pc !== null ? `<small class="${pc >= 0 ? 'pct-up' : 'pct-down'}">${pctTxt(pc)}</small>` : ''}</td>
       <td>${g.sold ? '<span class="pill gray">Đã bán</span>' : '<span class="pill yellow">Đang giữ</span>'}</td>
       <td class="acts">${!g.sold ? `<button class="ibtn" title="Bán" data-act="sellGold" data-id="${g.id}">💱</button>` : ''}<button class="ibtn" title="Sửa" data-act="editGold" data-id="${g.id}">✏️</button><button class="ibtn" title="Xóa" data-act="delGold" data-id="${g.id}">🗑️</button></td>
     </tr>`;
@@ -771,11 +788,11 @@ function goldCard() {
       <div class="span-3"><div class="stat yellow"><span class="si">🪙</span><div><small>Đang giữ</small><b>${fmtQty(s.qty)}</b></div></div></div>
       <div class="span-3"><div class="stat purple"><span class="si">💸</span><div><small>Tổng vốn</small><b>${money(s.cost)}</b></div></div></div>
       <div class="span-3"><div class="stat blue"><span class="si">💎</span><div><small>Giá trị hiện tại</small><b>${money(s.value)}</b></div></div></div>
-      <div class="span-3"><div class="stat ${s.profit >= 0 ? 'green' : 'pink'}"><span class="si">${s.profit >= 0 ? '📈' : '📉'}</span><div><small>Lãi / lỗ tạm tính</small><b>${s.profit >= 0 ? '+' : '−'}${money(Math.abs(s.profit))}</b></div></div></div>
+      <div class="span-3"><div class="stat ${s.profit >= 0 ? 'green' : 'pink'}"><span class="si">${s.profit >= 0 ? '📈' : '📉'}</span><div><small>Lãi / lỗ tạm tính${s.pct !== null ? ` · <b class="pct-big">${pctTxt(s.pct)}</b>` : ''}</small><b>${s.profit >= 0 ? '+' : '−'}${money(Math.abs(s.profit))}</b>${s.unpriced ? `<small>${s.unpriced} mục chưa có giá, chưa tính</small>` : ''}</div></div></div>
     </div>
     ${list.length ? `<table class="tbl"><thead><tr><th>Loại · Hãng</th><th>Ngày mua</th><th class="r">Số lượng</th><th class="r">Giá mua / chỉ</th><th class="r">Giá hiện tại / chỉ</th><th class="r">Lãi / lỗ</th><th></th><th></th></tr></thead><tbody>${rows}</tbody></table>`
       : empty('🪙', 'Chưa có vàng nào. Bấm "Thêm vàng đã mua" để ghi lại.')}
-    ${s.realized ? `<small style="display:block;margin-top:8px">Lãi/lỗ đã chốt từ vàng đã bán: ${pl(s.realized)}</small>` : ''}
+    ${s.realized ? `<small style="display:block;margin-top:8px">Lãi/lỗ đã chốt từ vàng đã bán: ${pl(s.realized)} ${pctTxt(s.realizedPct)}</small>` : ''}
     ${goldBoard()}
     <small style="display:block;margin-top:6px">💡 Vàng <b>24K</b> của 5 hãng (BTMC, BTMH, Kim Ngân Phúc, Huy Thanh, Phú Quý) được <b>tự cập nhật giá mỗi sáng</b>, tính theo giá tiệm mua vào (giá bạn bán được). Loại khác thì bấm "Cập nhật giá hôm nay" để nhập tay. 1 lượng = 10 chỉ.</small>
   </section>`;
@@ -1263,10 +1280,10 @@ function goldForm(g) {
   const brands = [...new Set([...GOLD_BRANDS, ...db.gold.map(x => x.brand).filter(Boolean)])];
   openForm({
     title: g ? '✏️ Sửa vàng' : '🪙 Thêm vàng đã mua',
-    values: g || { date: todayStr(), qty: 1, kind: 'Vàng 24K (999.9)', brand: 'Bảo Tín Minh Châu' },
+    values: g || { date: todayStr(), qty: 1, kind: 'Vàng 24K (999.9)', brand: '' },
     fields: [
       { k: 'kind', label: 'Loại vàng', type: 'select', half: true, options: GOLD_KINDS },
-      { k: 'brand', label: 'Hãng / thương hiệu', half: true, list: brands, ph: 'VD: SJC, PNJ, DOJI' },
+      { k: 'brand', label: 'Hãng / thương hiệu', half: true, list: brands, ph: 'Gõ hoặc chọn hãng' },
       { k: 'qty', label: 'Số lượng (chỉ) *', type: 'number', step: '0.01', half: true, req: true },
       { k: 'date', label: 'Ngày mua', type: 'date', half: true, req: true },
       { k: 'buyPrice', label: 'Giá lúc mua / 1 chỉ (₫) *', type: 'money', req: true },
@@ -1276,7 +1293,8 @@ function goldForm(g) {
     onSave(v) {
       if (v.qty <= 0 || v.buyPrice <= 0) { toast('Số lượng và giá mua phải lớn hơn 0', 'err'); return false; }
       if (g) Object.assign(g, v); else db.gold.push({ id: uid(), ...v, sold: false, sellPrice: 0, sellDate: '' });
-      if (!db.goldPrices[goldKey(v)]) db.goldPrices[goldKey(v)] = { price: v.buyPrice, date: v.date };
+      // KHÔNG lấy giá mua của bạn làm giá hiện tại (đó là giá tiệm bán ra); chỉ dùng giá tiệm mua vào
+      applyGoldFeed();
       toast(g ? '✨ Đã cập nhật' : `🪙 Đã thêm ${fmtQty(v.qty)} ${v.kind}`);
     },
   });
