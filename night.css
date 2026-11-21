@@ -214,3 +214,9 @@ body,.sidebar,.hero,.tbl td{transition:background-color .6s,color .6s,border-col
 .gb-h{font-family:var(--display);font-weight:800;font-size:16px;margin-bottom:4px}
 .gb-h small{font-family:var(--pixel);font-size:16px;font-weight:400;margin-left:6px}
 :root[data-theme=night] .gold-board{background:linear-gradient(180deg,#3d300a,var(--card))}
+
+/* 3 nút chọn sáng / tự động / tối dưới đồng hồ */
+.theme-seg{display:flex;justify-content:center;gap:3px;margin:5px auto 2px;background:#1c1838;border:1.5px solid #6c5fb0;border-radius:999px;padding:2px;width:max-content}
+.theme-seg button{border:0;background:transparent;border-radius:999px;width:30px;height:24px;cursor:pointer;font-size:14px;opacity:.55;transition:.15s}
+.theme-seg button:hover{opacity:1;background:#3a3466}
+.theme-seg button.on{opacity:1;background:#ff4fa8;box-shadow:0 0 8px rgba(255,79,168,.6)}

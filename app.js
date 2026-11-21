@@ -1501,9 +1501,13 @@ function applyTheme(announce = false) {
     if (!first && announce) toast(th === 'night' ? '🌙 Trời tối rồi, Kem chuyển sang chế độ đêm' : '☀️ Trời sáng rồi! Bật chế độ ngày rực rỡ');
   }
   const t = db.settings.theme || 'auto';
-  const btn = $('#themeBtn');
-  if (btn) btn.textContent = t === 'auto' ? (curTheme === 'night' ? '🌙 tự động' : '☀️ tự động') : t === 'night' ? '🌙 luôn tối' : '☀️ luôn sáng';
+  document.querySelectorAll('#themeSeg button').forEach(b => b.classList.toggle('on', b.dataset.v === t));
 }
+ACTIONS.setTheme = d => {
+  db.settings.theme = d.v;
+  save(); applyTheme(); if (route() === 'settings') render();
+  toast({ auto: '🕐 Tự đổi theo giờ (tối từ 18h đến 6h)', day: '☀️ Luôn sáng', night: '🌙 Luôn tối' }[d.v]);
+};
 ACTIONS.cycleTheme = () => {
   const order = ['auto', 'day', 'night'];
   db.settings.theme = order[(order.indexOf(db.settings.theme || 'auto') + 1) % 3];

@@ -11,6 +11,8 @@
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="assets/icon-192.png">
 <meta name="theme-color" content="#ff4fa8">
+<!-- Kem tự có chế độ sáng/tối riêng: báo trình duyệt đừng tự ép tối (Auto Dark Mode) -->
+<meta name="color-scheme" content="light dark">
 <link rel="stylesheet" href="style.css">
 <link rel="stylesheet" href="y2k.css">
 <link rel="stylesheet" href="night.css">
@@ -60,7 +62,9 @@
       <div class="lcd">
         <div class="lcd-date" id="lcdDate">--</div>
         <div class="lcd-time" id="lcdTime">--:--</div>
-        <button class="theme-btn" id="themeBtn" data-act="cycleTheme" title="Đổi chế độ sáng / tối">☀️ tự động</button>
+        <div class="theme-seg" id="themeSeg">
+          <button data-act="setTheme" data-v="day" title="Luôn sáng">☀️</button><button data-act="setTheme" data-v="auto" title="Tự động theo giờ (tối từ 18h đến 6h)">🕐</button><button data-act="setTheme" data-v="night" title="Luôn tối">🌙</button>
+        </div>
       </div>
     </header>
     <div id="view"></div>
