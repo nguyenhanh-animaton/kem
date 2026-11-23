@@ -1,42 +1,42 @@
 {
-  "updatedAt": "2026-11-22T12:54:19.378Z",
-  "date": "2026-11-22",
+  "updatedAt": "2026-11-23T09:19:22.844Z",
+  "date": "2026-11-23",
   "unit": "VND/chỉ",
   "note": "Giá vàng 24K, lấy tự động từ trang chính thức của từng hãng. buy = giá tiệm mua vào, sell = giá tiệm bán ra.",
   "brands": {
     "Bảo Tín Minh Châu": {
       "product": "Nhẫn tròn trơn 999.9 (Rồng Thăng Long)",
-      "buy": 12830000,
-      "sell": 13330000,
+      "buy": 12950000,
+      "sell": 13450000,
       "sourceTime": "",
       "ok": true
     },
     "Bảo Tín Mạnh Hải": {
       "product": "Kim Gia Bảo 24K",
-      "buy": 12830000,
-      "sell": 13330000,
-      "sourceTime": "2026-11-20 14:12",
+      "buy": 12950000,
+      "sell": 13450000,
+      "sourceTime": "2026-11-23 10:35",
       "ok": true
     },
     "Phú Quý": {
       "product": "Nhẫn tròn Phú Quý 999.9",
-      "buy": 12800000,
-      "sell": 13200000,
-      "sourceTime": "2026-11-21 08:31",
+      "buy": 12950000,
+      "sell": 13350000,
+      "sourceTime": "2026-11-23 16:16",
       "ok": true
     },
     "Huy Thanh": {
       "product": "Vàng Huy Thanh 24K",
-      "buy": 12800000,
-      "sell": 13300000,
-      "sourceTime": "2026-11-22 09:00",
+      "buy": 12950000,
+      "sell": 13450000,
+      "sourceTime": "2026-11-23 10:05",
       "ok": true
     },
     "Kim Ngân Phúc": {
       "product": "Nhẫn ép vỉ Kim Ngân Phúc 9999",
-      "buy": 11730000,
-      "sell": 12050000,
-      "sourceTime": "2026-11-22 12:45",
+      "buy": 11890000,
+      "sell": 12210000,
+      "sourceTime": "2026-11-23 15:05",
       "ok": true
     }
   }
