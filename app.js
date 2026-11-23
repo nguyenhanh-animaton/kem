@@ -367,15 +367,16 @@ function deadlineInfo(j) {
 
 function jobTable(list, opts = {}) {
   if (!list.length) return empty('🌱', opts.emptyText || 'Chưa có job nào ở đây.');
-  return `<table class="tbl"><thead><tr><th>Tên job</th><th>Loại</th><th>Deadline</th><th>Trạng thái</th><th class="r">Thành tiền</th><th></th></tr></thead><tbody>
+  return `<table class="tbl"><thead><tr><th>Tên job</th><th>Thành tiền</th><th>Ngày nhận file</th><th>Deadline</th><th>Trạng thái</th><th></th></tr></thead><tbody>
   ${list.map(j => {
     const st = STATUS[j.status] || STATUS.todo, c = colorOf(j.type);
+    const passed = j.startDate ? -daysLeft(j.startDate) : null;
     return `<tr>
       <td><div class="job-name"><span class="ava ${c}">${esc((j.type || j.name || '?').trim()[0] || '?').toUpperCase()}</span><div><b>${esc(j.name)}</b><small>${esc(j.client || '—')}</small></div></div></td>
-      <td>${j.type ? `<span class="tag">${esc(j.type)}</span>` : '<small>—</small>'}</td>
-      <td style="white-space:nowrap">${fmtDate(j.deadline)}${deadlineInfo(j)}${j.startDate ? `<small>nhận ${fmtDate(j.startDate)}</small>` : ''}</td>
+      <td style="white-space:nowrap"><span class="money">${money(j.amount)}</span><small>${j.paid ? '✅ Đã trả đủ' : depositGot(j) ? `🟢 Đã cọc ${short(depositGot(j))}` : '⏳ Chưa nhận'}</small></td>
+      <td style="white-space:nowrap">${j.startDate ? `${fmtDate(j.startDate)}${j.status !== 'done' && passed >= 0 ? `<small>${passed === 0 ? 'hôm nay' : `${passed} ngày trước`}</small>` : ''}` : '<small>—</small>'}</td>
+      <td style="white-space:nowrap">${fmtDate(j.deadline)}${deadlineInfo(j)}</td>
       <td><span class="pill ${st.c}">${STAGES[stageIdx(jobStage(j))].i} ${STAGES[stageIdx(jobStage(j))].s}</span>${num(j.revisions) ? ` <span class="pill ${num(j.revisions) >= 3 ? 'red' : 'purple'}">🔁${num(j.revisions)}</span>` : ''}${j.status !== 'done' ? `<div class="bar thin"><i style="width:${STAGES[stageIdx(jobStage(j))].p}%"></i></div>` : ''}</td>
-      <td class="r"><span class="money">${money(j.amount)}</span><small>${j.paid ? '✅ Đã trả đủ' : depositGot(j) ? `🟢 Đã cọc ${short(depositGot(j))}` : '⏳ Chưa nhận'}</small></td>
       <td class="acts">
         ${j.status !== 'done' ? `<button class="ibtn" title="Đánh dấu hoàn thành" data-act="doneJob" data-id="${j.id}">✅</button>` : ''}
         ${!j.paid ? `<button class="ibtn" title="Đã nhận tiền" data-act="payJob" data-id="${j.id}">💰</button>` : ''}
@@ -1171,7 +1172,7 @@ function dupJobForm(j) {
       { k: 'count', label: `Số job muốn tạo (job đầu tiên sẽ là "${first}")`, type: 'number', step: '1', req: true },
       { k: 'stage', label: 'Công đoạn', type: 'select', half: true, options: STAGES.map(s => [s.k, `${s.i} ${s.t}`]) },
       { k: 'amount', label: 'Tiền mỗi job (₫)', type: 'money', half: true },
-      { k: 'startDate', label: 'Ngày nhận job', type: 'date', half: true },
+      { k: 'startDate', label: 'Ngày nhận file', type: 'date', half: true },
       { k: 'deadline', label: 'Deadline', type: 'date', half: true },
     ],
     onSave(v) {
@@ -1202,7 +1203,7 @@ function jobForm(j, date) {
       { k: 'name', label: 'Tên job *', req: true, ph: 'VD: Emote Twitch 5 cái cho chị A' },
       { k: 'client', label: 'Khách (tên / nick FB / Discord)', half: true, list: clients },
       { k: 'type', label: 'Loại job', half: true, list: types },
-      { k: 'startDate', label: 'Ngày nhận job', type: 'date', half: true },
+      { k: 'startDate', label: 'Ngày nhận file', type: 'date', half: true },
       { k: 'deadline', label: 'Deadline', type: 'date', half: true },
       { k: 'stage', label: 'Đang ở công đoạn', type: 'select', half: true, options: STAGES.map(s => [s.k, `${s.i} ${s.t}`]) },
       { k: 'amount', label: 'Tổng tiền job (₫)', type: 'money', half: true },
