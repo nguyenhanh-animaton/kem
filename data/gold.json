@@ -1,5 +1,5 @@
 {
-  "updatedAt": "2026-11-23T09:19:22.844Z",
+  "updatedAt": "2026-11-23T15:27:06.142Z",
   "date": "2026-11-23",
   "unit": "VND/chỉ",
   "note": "Giá vàng 24K, lấy tự động từ trang chính thức của từng hãng. buy = giá tiệm mua vào, sell = giá tiệm bán ra.",
@@ -13,16 +13,16 @@
     },
     "Bảo Tín Mạnh Hải": {
       "product": "Kim Gia Bảo 24K",
-      "buy": 12950000,
-      "sell": 13450000,
-      "sourceTime": "2026-11-23 10:35",
+      "buy": 13100000,
+      "sell": 13600000,
+      "sourceTime": "2026-11-23 21:14",
       "ok": true
     },
     "Phú Quý": {
       "product": "Nhẫn tròn Phú Quý 999.9",
       "buy": 12950000,
       "sell": 13350000,
-      "sourceTime": "2026-11-23 16:16",
+      "sourceTime": "2026-11-23 18:27",
       "ok": true
     },
     "Huy Thanh": {
