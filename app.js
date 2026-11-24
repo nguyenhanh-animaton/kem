@@ -494,7 +494,10 @@ function highlightCard(m, cls) {
 function jobTabs(key, tabs) {
   return `<div class="tabs">${tabs.map(([v, t, n]) => `<button class="tab ${ui[key] === v ? 'on' : ''}" data-act="tab" data-k="${key}" data-v="${v}">${t}${n !== undefined ? ` (${n})` : ''}</button>`).join('')}</div>`;
 }
-function jobsFiltered(tab) {
+// Sắp tên job theo số từ bé đến lớn (LV2 < LV10 < LV41), không phân biệt hoa thường
+const byJobName = (a, b) => (a.name || '').localeCompare(b.name || '', 'vi', { numeric: true, sensitivity: 'base' });
+function jobsFiltered(tab) { return jobsFilteredRaw(tab).sort(byJobName); }
+function jobsFilteredRaw(tab) {
   const m = curMonth();
   switch (tab) {
     case 'active': return activeJobs().filter(j => j.status === 'doing' || j.status === 'review');
