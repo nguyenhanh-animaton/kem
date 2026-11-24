@@ -1758,6 +1758,19 @@ if ('serviceWorker' in navigator && location.protocol.startsWith('http')) {
 save();
 applyTheme();
 renderSplash();
+// Mở từ Kem Bot trên Desktop (?from=bot&do=...): bỏ qua màn chào, mở thẳng trang / form
+const QS = new URLSearchParams(location.search);
+if (QS.get('from') === 'bot') {
+  $('#splash').classList.add('gone');
+  document.body.classList.remove('splash-on');
+  const doIt = QS.get('do');
+  history.replaceState(null, '', location.pathname + location.hash);
+  setTimeout(() => {
+    if (doIt === 'addJob') ACTIONS.addJob({});
+    else if (doIt === 'addNote') ACTIONS.addNote({});
+    else if (doIt === 'addExpense') ACTIONS.addTx({ kind: 'expense' });
+  }, 350);
+}
 render();
 loadGoldFeed();
 setInterval(() => applyTheme(true), 60000);
