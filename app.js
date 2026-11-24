@@ -500,7 +500,9 @@ function jobsFiltered(tab) {
     case 'active': return activeJobs().filter(j => j.status === 'doing' || j.status === 'review');
     case 'todo': return activeJobs().filter(j => j.status === 'todo');
     case 'doneMonth': return db.jobs.filter(j => j.status === 'done' && mk(j.doneDate) === m);
-    case 'done': return db.jobs.filter(j => j.status === 'done').sort((a, b) => (b.doneDate || '').localeCompare(a.doneDate || ''));
+    // Hoàn thành = làm xong nhưng khách CHƯA trả đủ; Đã thanh toán = khách đã trả đủ
+    case 'done': return db.jobs.filter(j => j.status === 'done' && !j.paid).sort((a, b) => (b.doneDate || '').localeCompare(a.doneDate || ''));
+    case 'paid': return db.jobs.filter(j => j.paid).sort((a, b) => (b.paidDate || '').localeCompare(a.paidDate || ''));
     case 'unpaid': return db.jobs.filter(j => j.status === 'done' && !j.paid);
     default: return [...activeJobs(), ...db.jobs.filter(j => j.status === 'done').sort((a, b) => (b.doneDate || '').localeCompare(a.doneDate || ''))];
   }
@@ -638,7 +640,9 @@ function viewJobs() {
     <div class="span-4">${statBoxCard('💸', 'Khách còn nợ', sum(unpaid, jobRemain), 'yellow', `${unpaid.length} job đã xong chưa trả đủ`)}</div>
     <div class="span-4">${statBoxCard('✅', 'Đã nhận tháng này', sum(summary(curMonth()).paidRows, r => r.amount), 'green', `${monthLabel(curMonth())} (gồm cả cọc)`)}</div>
     <section class="card span-12">
-      ${jobTabs('jobTab', [['active', 'Đang làm', jobsFiltered('active').length], ['todo', 'Sắp làm', jobsFiltered('todo').length], ['unpaid', 'Chưa thanh toán', unpaid.length], ['done', 'Hoàn thành', jobsFiltered('done').length], ['all', 'Tất cả', db.jobs.length]])}
+      ${jobTabs('jobTab', [['active', 'Đang làm', jobsFiltered('active').length], ['todo', 'Sắp làm', jobsFiltered('todo').length], ['done', '🏁 Hoàn thành (chưa nhận tiền)', jobsFiltered('done').length], ['paid', '💰 Đã thanh toán', jobsFiltered('paid').length], ['all', 'Tất cả', db.jobs.length]])}
+      ${ui.jobTab === 'done' && jobsFiltered('done').length ? `<div class="banner yellow" style="margin:0 0 10px">💸 <span>Khách còn nợ <b>${money(sum(jobsFiltered('done'), jobRemain))}</b>. Nhận tiền rồi thì bấm 💰 để chuyển sang "Đã thanh toán".</span></div>` : ''}
+      ${ui.jobTab === 'paid' && jobsFiltered('paid').length ? `<div class="banner blue" style="margin:0 0 10px">✅ <span>Đã nhận tổng cộng <b>${money(sum(jobsFiltered('paid'), j => j.amount))}</b> từ ${jobsFiltered('paid').length} job.</span></div>` : ''}
       ${jobTable(jobsFiltered(ui.jobTab), { emptyText: 'Không có job nào trong mục này.' })}
     </section>
   </div>`;
