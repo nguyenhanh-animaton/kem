@@ -1,5 +1,5 @@
 {
-  "updatedAt": "2026-11-26T09:43:23.226Z",
+  "updatedAt": "2026-11-26T14:33:39.334Z",
   "date": "2026-11-26",
   "unit": "VND/chỉ",
   "note": "Giá vàng 24K, lấy tự động từ trang chính thức của từng hãng. buy = giá tiệm mua vào, sell = giá tiệm bán ra.",
@@ -22,7 +22,7 @@
       "product": "Nhẫn tròn Phú Quý 999.9",
       "buy": 12880000,
       "sell": 13280000,
-      "sourceTime": "2026-11-26 16:33",
+      "sourceTime": "2026-11-26 18:25",
       "ok": true
     },
     "Huy Thanh": {
